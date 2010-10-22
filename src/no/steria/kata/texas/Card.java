@@ -21,7 +21,7 @@ public class Card implements Comparable<Card> {
     }
 
     public static Card diamonds(int rank) {
-        return new Card(rank, "rank", '\u2666');
+        return new Card(rank, "diamonds", '\u2666');
     }
 
     public static Card clubs(int rank) {

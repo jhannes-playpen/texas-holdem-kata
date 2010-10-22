@@ -15,7 +15,6 @@ public class PlayerHand implements Comparable<PlayerHand> {
     private final Card[] cards;
 
     public PlayerHand(Card... cards) {
-        if (cards.length != 5) throw new IllegalArgumentException(Arrays.asList(cards) + " wrong length " + cards.length);
         this.cards = cards;
     }
 
@@ -85,41 +84,50 @@ public class PlayerHand implements Comparable<PlayerHand> {
     }
 
     private List<Integer> getAceLowStraight() {
-        return Arrays.asList(14, 2, 3, 4, 5);
+        return Arrays.asList(5, 4, 3, 2, 14);
     }
 
     public List<Card> getStraightHand() {
-        List<Card> straightWithAceLow = getStraightWithAceLow();
+        Map<Integer, List<Card>> cardsPerRank = getCardsPerRank();
+
+        for (int rank=10; rank>=2; rank--) {
+            List<Card> straight = getOneCardOfEachRank(cardsPerRank, Arrays.asList(rank+4, rank+3, rank+2, rank+1, rank));
+            if (straight != null) return straight;
+        }
+
+        List<Card> straightWithAceLow = getOneCardOfEachRank(cardsPerRank, getAceLowStraight());
         if (straightWithAceLow != null) return straightWithAceLow;
 
-        List<Card> hand = Arrays.asList(cards);
-        Collections.sort(hand);
-        int previousRank = hand.get(0).getRank();
-        for (int cardIndex = 1; cardIndex < hand.size(); cardIndex++) {
-            if (previousRank+1 != hand.get(cardIndex).getRank()) return null;
-            previousRank++;
-        }
-        return hand;
+        return null;
     }
 
-    private List<Card> getStraightWithAceLow() {
-        Map<Integer, List<Card>> cardsPerRank = getCardsPerRank();
-        List<Integer> aceLowStraight = getAceLowStraight();
+    private List<Card> getOneCardOfEachRank(Map<Integer, List<Card>> cardsPerRank, List<Integer> ranks) {
         List<Card> hand = new ArrayList<Card>();
-
-        for (Integer rank : aceLowStraight) {
+        for (Integer rank : ranks) {
             if (cardsPerRank.get(rank).size()!=1) return null;
-            hand.addAll(cardsPerRank.get(rank));
+            hand.add(cardsPerRank.get(rank).get(0));
         }
         return hand;
     }
 
     public List<Card> getFlushHand() {
-        String suit = cards[0].getSuit();
-        for (Card card : cards) {
-            if (!card.getSuit().equals(suit)) return null;
+        Map<String, List<Card>> cardsPerSuit = new HashMap<String, List<Card>>();
+        String[] suits = new String[] { "clubs", "diamonds", "hearts", "spades" };
+        for (String suit : suits) {
+            cardsPerSuit.put(suit, new ArrayList<Card>());
         }
-        return getHighCardHand();
+        for (Card card : cards) {
+            cardsPerSuit.get(card.getSuit()).add(card);
+        }
+
+        for (String suit : suits) {
+            if (cardsPerSuit.get(suit).size() >= 5) {
+                Collections.sort(cardsPerSuit.get(suit));
+                Collections.reverse(cardsPerSuit.get(suit));
+                return cardsPerSuit.get(suit).subList(0, 5);
+            }
+        }
+        return null;
     }
 
     public List<Card> getFullHouseHand() {
@@ -127,8 +135,11 @@ public class PlayerHand implements Comparable<PlayerHand> {
         List<Card> threeOfAKind = null;
         List<Card> pair = null;
         for (Integer rank : getRanks()) {
-            if (cardsPerRank.get(rank).size() == 3) threeOfAKind = cardsPerRank.get(rank);
-            if (cardsPerRank.get(rank).size() == 2) pair = cardsPerRank.get(rank);
+            if (cardsPerRank.get(rank).size() == 3 && threeOfAKind == null) {
+                threeOfAKind = cardsPerRank.get(rank);
+            } else if (cardsPerRank.get(rank).size() >= 2 && pair == null) {
+                pair = cardsPerRank.get(rank).subList(0, 2);
+            }
         }
         if (threeOfAKind == null || pair == null) return null;
         List<Card> result = new ArrayList<Card>(threeOfAKind);
@@ -147,6 +158,18 @@ public class PlayerHand implements Comparable<PlayerHand> {
     public List<Card> getStraightFlushHand() {
         if (getFlushHand() == null || getStraightHand() == null) return null;
         return getHighCardHand();
+    }
+
+    public String getHandName() {
+        if (getStraightFlushHand() != null) return "straight flush";
+        if (getFourOfAKindHand() != null) return "four of a kind";
+        if (getFullHouseHand() != null) return "full house";
+        if (getFlushHand() != null) return "flush";
+        if (getStraightHand() != null) return "straight";
+        if (getThreeOfAKindHand() != null) return "three of a kind";
+        if (getTwoPairHand() != null) return "two pairs";
+        if (getPairHand() != null) return "pair";
+        return "high card";
     }
 
 }
